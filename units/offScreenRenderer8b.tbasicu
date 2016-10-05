@@ -7,8 +7,6 @@ uses "File"
 #include "thinbasic_wgl.inc"
 #include "osr*.tbasicu"
 
-
-
 function offScreenRenderer8b_IsSupported() as long
   return tbgl_oglExtensionSupport("GL_EXT_framebuffer_object")
 end function
@@ -118,7 +116,7 @@ type offScreenRenderer8b
   
   function getImageBufferBits8B() as string
       
-    string myBuffer = String$(me.imageBuffer.width * me.imageBuffer.height * sizeOf(osrPixel_8_8_8_8), $SPC)
+    string myBuffer = string$(me.imageBuffer.width * me.imageBuffer.height * sizeOf(osrPixel_8_8_8_8), $SPC)
   
     glGetTexImage(%GL_TEXTURE_2D, 0, %GL_RGBA, %GL_UNSIGNED_BYTE, byVal strPtr(myBuffer))
   
@@ -129,7 +127,7 @@ type offScreenRenderer8b
   function saveAsBMP( fileName as string) 
   
     glBindTexture(%GL_TEXTURE_2D, me.imageBuffer.texture)
-    string sBuffer = String$(me.imageBuffer.width * me.imageBuffer.height * 3, $SPC)
+    string sBuffer = string$(me.imageBuffer.width * me.imageBuffer.height * 3, $SPC)
   
     glGetTexImage(%GL_TEXTURE_2D, 0, %GL_BGR, %GL_UNSIGNED_BYTE, StrPtr(sBuffer))
     
@@ -146,7 +144,7 @@ type offScreenRenderer8b
     bmpInfoHdr.biBitCount = 24
     bmpInfoHdr.biSizeImage= 54 + len(sBuffer)
     
-    FILE_Save(fileName, peek$(varPtr(bmpFileHdr), sizeOf(bmpFileHdr))+ peek$(varPtr(bmpInfoHdr), sizeOf(bmpInfoHdr)) + sBuffer)
+    file_save(fileName, peek$(varPtr(bmpFileHdr), sizeOf(bmpFileHdr))+ peek$(varPtr(bmpInfoHdr), sizeOf(bmpInfoHdr)) + sBuffer)
   
   end function
   
