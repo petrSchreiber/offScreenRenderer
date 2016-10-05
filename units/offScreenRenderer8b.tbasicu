@@ -1,0 +1,153 @@
+'  Offscreen renderer
+
+uses "File"
+
+#include "thinbasic_gl.inc"
+#include "thinbasic_glext.inc"
+#include "thinbasic_wgl.inc"
+#include "osr*.tbasicu"
+
+
+
+function offScreenRenderer8b_IsSupported() as long
+  return tbgl_oglExtensionSupport("GL_EXT_framebuffer_object")
+end function
+
+type offScreenRenderer8b
+  private
+  
+  imageBuffer as osrImageBuffer
+  
+  public
+  
+  function _create(width as long, height as long)
+
+    declare set address glGenRenderbuffersEXT,        wglGetProcAddress("glGenRenderbuffersEXT")
+    declare set address glBindRenderbufferEXT,        wglGetProcAddress("glBindRenderbufferEXT")
+    declare set address glRenderbufferStorageEXT,     wglGetProcAddress("glRenderbufferStorageEXT")
+    declare set address glBindRenderbufferEXT,        wglGetProcAddress("glBindRenderbufferEXT")
+    declare set address glGenFramebuffersEXT,         wglGetProcAddress("glGenFramebuffersEXT")
+    declare set address glBindFramebufferEXT,         wglGetProcAddress("glBindFramebufferEXT")
+    declare set address glFramebufferTexture2DEXT,    wglGetProcAddress("glFramebufferTexture2DEXT")
+    declare set address glFramebufferRenderbufferEXT, wglGetProcAddress("glFramebufferRenderbufferEXT")
+    declare set address glCheckFramebufferStatusEXT,  wglGetProcAddress("glCheckFramebufferStatusEXT")  
+    declare set address glDeleteRenderBuffersEXT,     wglGetProcAddress("glDeleteRenderbuffersEXT")
+    declare set address glDeleteFrameBuffersEXT,      wglGetProcAddress("glDeleteFramebuffersEXT")
+            
+    me.imageBuffer.width  = width
+    me.imageBuffer.height = height   
+  
+    ' -- Frame buffer to hold color information
+    glGenFramebuffersEXT(1, me.imageBuffer.frameBufferObject)
+    glBindFramebufferEXT(%GL_FRAMEBUFFER_EXT, me.imageBuffer.frameBufferObject)
+  
+    ' -- Render buffer to hold depth information
+    glGenRenderbuffersEXT(1, me.imageBuffer.renderBufferObject)  
+    glBindRenderbufferEXT(%GL_RENDERBUFFER_EXT, me.imageBuffer.renderBufferObject)
+    glRenderbufferStorageEXT(%GL_RENDERBUFFER_EXT, %GL_DEPTH_COMPONENT, me.imageBuffer.width, me.imageBuffer.height)  
+    glFramebufferRenderbufferEXT(%GL_FRAMEBUFFER_EXT, %GL_DEPTH_ATTACHMENT_EXT, %GL_RENDERBUFFER_EXT, me.imageBuffer.renderBufferObject)  
+    
+    ' -- Texture mapping of the FBO
+    glGenTextures(1, me.imageBuffer.texture)    
+    glBindTexture(%GL_TEXTURE_2D, me.imageBuffer.texture)
+    glTexImage2D(%GL_TEXTURE_2D, 0, %GL_RGBA8, me.imageBuffer.width, me.imageBuffer.height, 0, %GL_RGBA, %GL_UNSIGNED_BYTE, 0)
+    
+    glTexParameterf(%GL_TEXTURE_2D, %GL_TEXTURE_WRAP_S, %GL_CLAMP_TO_EDGE)
+    glTexParameterf(%GL_TEXTURE_2D, %GL_TEXTURE_WRAP_T, %GL_CLAMP_TO_EDGE)
+    glTexParameteri(%GL_TEXTURE_2D, %GL_TEXTURE_MAG_FILTER, %GL_LINEAR)
+    glTexParameteri(%GL_TEXTURE_2D, %GL_TEXTURE_MIN_FILTER, %GL_LINEAR)
+     
+    glFramebufferTexture2DEXT(%GL_FRAMEBUFFER_EXT, %GL_COLOR_ATTACHMENT0_EXT, %GL_TEXTURE_2D, me.imageBuffer.texture, 0)
+    
+    ' -- Did we succeeded?    
+    long glStatus = glCheckFramebufferStatusEXT(%GL_FRAMEBUFFER_EXT)
+    If(glStatus <> %GL_FRAMEBUFFER_COMPLETE_EXT) Then
+      me.destroyImageBuffer8B()
+      
+      return 1
+    Else    
+      '  Go back to regular frame buffer rendering
+      glBindFramebufferEXT(%GL_FRAMEBUFFER_EXT, 0)
+  
+      return 0
+    end If
+  
+  end function
+    
+  function _destroy( pMem as dword ) as long
+  
+    glDeleteTextures(1, me.imageBuffer.texture)
+    glDeleteRenderBuffersEXT(1, me.imageBuffer.renderBufferObject)
+    glDeleteFrameBuffersEXT(1, me.imageBuffer.frameBufferObject)
+  
+  end function
+  
+  ' --
+    
+  function beginRender() 
+    
+    glBindFrameBufferEXT(%GL_FRAMEBUFFER_EXT, me.imageBuffer.frameBufferObject)
+  
+    ' -- Viewport must match the FBO size
+    glPushAttrib(%GL_VIEWPORT_BIT)
+    glViewport(0, 0, me.imageBuffer.width, me.imageBuffer.height)
+  
+  end function
+  
+  function endRender() 
+     
+    glPopAttrib()
+    glBindFrameBufferEXT(%GL_FRAMEBUFFER_EXT, 0)
+  
+  end function
+  
+  ' --
+
+  function getTexture() as long
+  
+    return me.imageBuffer.texture
+  
+  end function
+  
+  function bindTexture()
+  
+    glBindFramebufferEXT(%GL_FRAMEBUFFER_EXT, 0)
+    glBindTexture(%GL_TEXTURE_2D, me.imageBuffer.texture)
+  
+  end function
+  
+  function getImageBufferBits8B() as string
+      
+    string myBuffer = String$(me.imageBuffer.width * me.imageBuffer.height * sizeOf(osrPixel_8_8_8_8), $SPC)
+  
+    glGetTexImage(%GL_TEXTURE_2D, 0, %GL_RGBA, %GL_UNSIGNED_BYTE, byVal strPtr(myBuffer))
+  
+    return myBuffer
+  
+  end function
+  
+  function saveAsBMP( fileName as string) 
+  
+    glBindTexture(%GL_TEXTURE_2D, me.imageBuffer.texture)
+    string sBuffer = String$(me.imageBuffer.width * me.imageBuffer.height * 3, $SPC)
+  
+    glGetTexImage(%GL_TEXTURE_2D, 0, %GL_BGR, %GL_UNSIGNED_BYTE, StrPtr(sBuffer))
+    
+    dim bmpFileHdr as osrBitmapFileHeader
+    dim bmpInfoHdr as osrBitmapInfoHeader
+    
+    bmpFileHdr.bfType     = CVI( "BM" )
+    bmpFileHdr.bfSize     = sizeOf( bmpFileHdr ) + sizeOf( bmpInfoHdr ) + len(sBuffer)
+    bmpFileHdr.bfOffBits  = 54
+    bmpInfoHdr.biSize     = 40
+    bmpInfoHdr.biWidth    = me.imageBuffer.width
+    bmpInfoHdr.biHeight   = me.imageBuffer.height
+    bmpInfoHdr.biPlanes   = 1
+    bmpInfoHdr.biBitCount = 24
+    bmpInfoHdr.biSizeImage= 54 + len(sBuffer)
+    
+    FILE_Save(fileName, peek$(varPtr(bmpFileHdr), sizeOf(bmpFileHdr))+ peek$(varPtr(bmpInfoHdr), sizeOf(bmpInfoHdr)) + sBuffer)
+  
+  end function
+  
+end type

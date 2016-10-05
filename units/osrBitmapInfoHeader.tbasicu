@@ -1,0 +1,15 @@
+' Bitmap info header for offscreen rendering
+        
+type osrBitmapInfoHeader
+  biSize          as dword
+  biWidth         as long
+  biHeight        as long
+  biPlanes        as word
+  biBitCount      as word
+  biCompression   as dword
+  biSizeImage     as dword
+  biXPelsPerMeter as long
+  biYPelsPerMeter as long
+  biClrUsed       as dword
+  biClrImportant  as dword
+end type

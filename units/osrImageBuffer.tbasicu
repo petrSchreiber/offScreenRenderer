@@ -1,0 +1,11 @@
+' Image buffer for off-screen rendering
+
+type osrImageBuffer
+  frameBufferObject  as dword
+  renderBufferObject as dword
+  
+  texture            as dword
+  
+  width              as long
+  height             as long
+end type

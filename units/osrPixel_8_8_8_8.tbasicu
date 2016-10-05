@@ -1,0 +1,8 @@
+' Single pixel, 8 bit per channel representation
+
+Type osrPixel_8_8_8_8
+  r As Byte
+  g As Byte
+  b As Byte
+  a As Byte
+End Type

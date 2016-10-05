@@ -1,0 +1,9 @@
+' Bitmap file header for offscreen rendering
+
+type osrBitmapFileHeader
+  bfType      as word
+  bfSize      as dword
+  bfReserved1 as word
+  bfReserved2 as word
+  bfOffBits   as dword
+end type
