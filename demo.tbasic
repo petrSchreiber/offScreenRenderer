@@ -8,7 +8,7 @@ uses "TBGL"
 function tbMain()
  
   ' -- Create and show window
-  dword hWnd = tbgl_createWindowEx "offScreenRenderer demo - press ESC to quit", 256, 256, 32, %TBGL_WS_WINDOWED | %TBGL_WS_DONTSIZE
+  dword hWnd = tbgl_createWindowEx "offScreenRenderer demo - press ESC to quit", 256, 256, 32, %TBGL_WS_WINDOWED
   tbgl_showWindow
  
   if offScreenRenderer8b_IsSupported = false Then
@@ -30,7 +30,7 @@ function tbMain()
     ' -- Here we perform the offscreen rendering
     offScreenRenderer.beginRender
    
-      tbgl_renderMatrix2D
+      tbgl_renderMatrix2D(0, 0, 256, 256)
       tbgl_clearFrame
      
       drawImage

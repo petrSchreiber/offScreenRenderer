@@ -7,6 +7,9 @@ uses "File"
 #include "thinbasic_wgl.inc"
 #include "osr*.tbasicu"
 
+%OSR_NEAREST_NEIGHBOUR = %GL_NEAREST
+%OSR_BILINEAR          = %GL_LINEAR
+
 function offScreenRenderer8b_IsSupported() as long
   return tbgl_oglExtensionSupport("GL_EXT_framebuffer_object")
 end function
@@ -18,7 +21,7 @@ type offScreenRenderer8b
   
   public
   
-  function _create(width as long, height as long)
+  function _create(width as long, height as long, optional interpolation as long)
 
     declare set address glGenRenderbuffersEXT,        wglGetProcAddress("glGenRenderbuffersEXT")
     declare set address glBindRenderbufferEXT,        wglGetProcAddress("glBindRenderbufferEXT")
@@ -52,9 +55,17 @@ type offScreenRenderer8b
     
     glTexParameterf(%GL_TEXTURE_2D, %GL_TEXTURE_WRAP_S, %GL_CLAMP_TO_EDGE)
     glTexParameterf(%GL_TEXTURE_2D, %GL_TEXTURE_WRAP_T, %GL_CLAMP_TO_EDGE)
-    glTexParameteri(%GL_TEXTURE_2D, %GL_TEXTURE_MAG_FILTER, %GL_LINEAR)
-    glTexParameteri(%GL_TEXTURE_2D, %GL_TEXTURE_MIN_FILTER, %GL_LINEAR)
-     
+    
+    select case interpolation
+      case 0, %OSR_BILINEAR
+        glTexParameteri(%GL_TEXTURE_2D, %GL_TEXTURE_MAG_FILTER, %GL_LINEAR)
+        glTexParameteri(%GL_TEXTURE_2D, %GL_TEXTURE_MIN_FILTER, %GL_LINEAR)
+        
+      case %OSR_NEAREST_NEIGHBOUR 
+        glTexParameteri(%GL_TEXTURE_2D, %GL_TEXTURE_MAG_FILTER, %GL_NEAREST)
+        glTexParameteri(%GL_TEXTURE_2D, %GL_TEXTURE_MIN_FILTER, %GL_NEAREST)
+        
+    end select     
     glFramebufferTexture2DEXT(%GL_FRAMEBUFFER_EXT, %GL_COLOR_ATTACHMENT0_EXT, %GL_TEXTURE_2D, me.imageBuffer.texture, 0)
     
     ' -- Did we succeeded?    
