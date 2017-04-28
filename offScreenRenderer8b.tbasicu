@@ -21,7 +21,13 @@ type offScreenRenderer8b
   
   public
   
-  function _create(width as long, height as long, optional interpolation as long)
+  function _destroy()
+    me.releaseBuffer()
+  end function
+  
+  '
+  
+  function buildBuffer(width as long, height as long, optional interpolation as long)
 
     declare set address glGenRenderbuffersEXT,        wglGetProcAddress("glGenRenderbuffersEXT")
     declare set address glBindRenderbufferEXT,        wglGetProcAddress("glBindRenderbufferEXT")
@@ -83,11 +89,11 @@ type offScreenRenderer8b
   
   end function
     
-  function _destroy( pMem as dword ) as long
+  function releaseBuffer()
   
-    glDeleteTextures(1, me.imageBuffer.texture)
-    glDeleteRenderBuffersEXT(1, me.imageBuffer.renderBufferObject)
-    glDeleteFrameBuffersEXT(1, me.imageBuffer.frameBufferObject)
+    if me.imageBuffer.texture            then glDeleteTextures(1, me.imageBuffer.texture)
+    if me.imageBuffer.renderBufferObject then glDeleteRenderBuffersEXT(1, me.imageBuffer.renderBufferObject)
+    if me.imageBuffer.frameBufferObject  then glDeleteFrameBuffersEXT(1, me.imageBuffer.frameBufferObject)
   
   end function
   
