@@ -1,6 +1,6 @@
-'  Offscreen renderer
+﻿'  Offscreen renderer
 
-uses "File"
+uses "UI"
 
 #include "thinbasic_gl.inc"
 #include "thinbasic_glext.inc"
@@ -18,6 +18,7 @@ type offScreenRenderer8b
   private
   
   imageBuffer as osrImageBuffer
+  renderQuad  as long
   
   public
   
@@ -81,7 +82,26 @@ type offScreenRenderer8b
       
       return 1
     Else    
-      '  Go back to regular frame buffer rendering
+      ' Prepare render quad
+      dim listSpace(1) as long at varptr(me.renderQuad)
+      TBGL_NewListSpace(listSpace, 1)
+
+      tbgl_newList me.renderQuad
+        tbgl_pushColor 255, 255, 255
+          tbgl_pushState %TBGL_TEXTURING
+          me.bindTexture()
+                  
+          tbgl_beginPoly %GL_QUADS
+            tbgl_texCoord2D 0, 0 : tbgl_vertex 0, 0
+            tbgl_texCoord2D 0, 1 : tbgl_vertex 0, 1
+            tbgl_texCoord2D 1, 1 : tbgl_vertex 1, 1
+            tbgl_texCoord2D 1, 0 : tbgl_vertex 1, 0
+          tbgl_endPoly
+          tbgl_popState
+        tbgl_popColor
+      tbgl_endlist
+      
+      ' Go back to regular frame buffer rendering
       glBindFramebufferEXT(%GL_FRAMEBUFFER_EXT, 0)
   
       return 0
@@ -90,7 +110,8 @@ type offScreenRenderer8b
   end function
     
   function releaseBuffer()
-  
+    dim listSpace(1) as long at varptr(me.renderQuad)
+    tbgl_deleteListSpace(listSpace(1))
     if me.imageBuffer.texture            then glDeleteTextures(1, me.imageBuffer.texture)
     if me.imageBuffer.renderBufferObject then glDeleteRenderBuffersEXT(1, me.imageBuffer.renderBufferObject)
     if me.imageBuffer.frameBufferObject  then glDeleteFrameBuffersEXT(1, me.imageBuffer.frameBufferObject)
@@ -143,26 +164,31 @@ type offScreenRenderer8b
   
   function saveAsBMP( fileName as string) 
   
+    me.saveImage(fileName)
+  
+  end function
+  
+  function saveImage( fileName as string)
+  
     glBindTexture(%GL_TEXTURE_2D, me.imageBuffer.texture)
-    string sBuffer = string$(me.imageBuffer.width * me.imageBuffer.height * 3, $SPC)
+    string sBuffer = string$(me.imageBuffer.width * me.imageBuffer.height * 4, $SPC)
   
-    glGetTexImage(%GL_TEXTURE_2D, 0, %GL_BGR, %GL_UNSIGNED_BYTE, StrPtr(sBuffer))
+    glGetTexImage(%GL_TEXTURE_2D, 0, %GL_BGRA, %GL_UNSIGNED_BYTE, StrPtr(sBuffer))
     
-    dim bmpFileHdr as osrBitmapFileHeader
-    dim bmpInfoHdr as osrBitmapInfoHeader
+    dword hBmp = Canvas_BitmapNew(me.imageBuffer.width, me.imageBuffer.height)
+    Canvas_Attach hBmp, 0
+    Canvas_BitmapSet(sBuffer, me.imageBuffer.width, me.imageBuffer.height)
+    Canvas_BitmapSaveImageFile(fileName, hBmp)
     
-    bmpFileHdr.bfType     = CVI( "BM" )
-    bmpFileHdr.bfSize     = sizeOf( bmpFileHdr ) + sizeOf( bmpInfoHdr ) + len(sBuffer)
-    bmpFileHdr.bfOffBits  = 54
-    bmpInfoHdr.biSize     = 40
-    bmpInfoHdr.biWidth    = me.imageBuffer.width
-    bmpInfoHdr.biHeight   = me.imageBuffer.height
-    bmpInfoHdr.biPlanes   = 1
-    bmpInfoHdr.biBitCount = 24
-    bmpInfoHdr.biSizeImage= 54 + len(sBuffer)
+    Canvas_BitmapEnd
     
-    file_save(fileName, peek$(varPtr(bmpFileHdr), sizeOf(bmpFileHdr))+ peek$(varPtr(bmpInfoHdr), sizeOf(bmpInfoHdr)) + sBuffer)
+  end function
   
+  function drawFrame()
+    tbgl_clearFrame
+      tbgl_renderMatrix2D(0, 0, 1, 1)
+      tbgl_calllist me.renderQuad
+    tbgl_drawFrame
   end function
   
 end type
